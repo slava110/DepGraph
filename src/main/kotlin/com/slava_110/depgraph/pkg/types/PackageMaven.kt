@@ -1,6 +1,4 @@
-package com.slava_110.depgraph
-
-import io.ktor.client.request.*
+package com.slava_110.depgraph.pkg.types
 
 //TODO parse XML?
 /*

@@ -1,6 +1,5 @@
-package com.slava_110.depgraph.`package`
+package com.slava_110.depgraph.pkg
 
-import com.slava_110.depgraph.IPackage
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.toList

@@ -1,22 +1,21 @@
-package com.slava_110.depgraph
+package com.slava_110.depgraph.pkg.types
 
-import com.slava_110.depgraph.`package`.PackageBase
+import com.slava_110.depgraph.httpClient
+import com.slava_110.depgraph.pkg.IPackage
+import com.slava_110.depgraph.pkg.PackageBase
 import io.ktor.client.call.*
+import io.ktor.client.plugins.*
 import io.ktor.client.request.*
-import io.ktor.http.*
 import io.ktor.utils.io.*
 import io.ktor.utils.io.core.*
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.asFlow
-import kotlinx.coroutines.flow.mapNotNull
-import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.Transient
 import java.io.File
 import java.nio.file.FileSystems
 import java.nio.file.Path
 import kotlin.io.path.bufferedReader
+import kotlin.io.path.listDirectoryEntries
 
 @Serializable
 data class PIPPackageData(
@@ -31,7 +30,11 @@ data class PIPPackageData(
             File.createTempFile("depgraph", "pippackage")
         }
 
-        httpClient.prepareGet(packageUrl).execute { response ->
+        httpClient.prepareGet(packageUrl) {
+            timeout {
+                requestTimeoutMillis = HttpTimeout.INFINITE_TIMEOUT_MS
+            }
+        }.execute { response ->
             val channel: ByteReadChannel = response.body()
             while (!channel.isClosedForRead) {
                 val packet = channel.readRemaining(DEFAULT_BUFFER_SIZE.toLong())
@@ -91,7 +94,7 @@ data class PackagePIP(
                     withContext(Dispatchers.IO) {
                         FileSystems.newFileSystem(downloaded.toPath())
                     }.use { fs ->
-                        val metadataPath = fs.getPath("${ packageData.info.name }-${ packageData.info.version }.dist-info", "METADATA")
+                        val metadataPath = fs.getPath(".").listDirectoryEntries("*.dist-info").single().resolve("METADATA")
 
                         parseMetadata(metadataPath)
                     }
@@ -114,8 +117,8 @@ data class PackagePIP(
             val depNames = mutableMapOf<String, String>()
 
             metadataPath.bufferedReader().lineSequence()
-                .takeWhile { it.isNotBlank() }
                 .map { line -> line.split(": ", limit = 2) }
+                .filter { it.size == 2 }
                 .forEach { (k, v) ->
                     when(k) {
                         "Name" -> packageName = v
@@ -131,6 +134,6 @@ data class PackagePIP(
         }
 
         override suspend fun find(name: String, versionRange: String): PackagePIP? =
-            get(name, versionRange)
+            get(name.replace(";", "").trim())
     }
 }

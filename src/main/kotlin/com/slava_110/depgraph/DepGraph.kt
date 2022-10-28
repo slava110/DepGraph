@@ -1,20 +1,31 @@
 package com.slava_110.depgraph
 
+import com.slava_110.depgraph.pkg.IPackage
+import com.slava_110.depgraph.pkg.types.PackageNPM
+import com.slava_110.depgraph.pkg.types.PackagePIP
+import guru.nidi.graphviz.KraphvizContext
 import guru.nidi.graphviz.graph
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
+import io.ktor.client.plugins.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.cli.ArgParser
 import kotlinx.cli.ArgType
+import kotlinx.cli.default
 import kotlinx.cli.required
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
+import java.io.File
 
 val httpClient = HttpClient(CIO) {
     install(ContentNegotiation) {
         json(Json {
             ignoreUnknownKeys = true
         })
+    }
+    install(HttpTimeout) {
+        requestTimeoutMillis = HttpTimeout.INFINITE_TIMEOUT_MS
     }
 }
 
@@ -28,9 +39,10 @@ suspend fun main(args: Array<String>) {
         programName = "DepGraph"
     )
 
-    val type by argParser.option(ArgType.String, shortName = "t", description = "Package type (npm/pip)").required()
+    val type by argParser.option(ArgType.String, shortName = "t", description = "Package type (${ packageTypes.keys.joinToString("/") })").required()
     val packageName by argParser.option(ArgType.String, shortName = "p", description = "Package name").required()
     val packageVersion by argParser.option(ArgType.String, shortName = "v", description = "Package version")
+    val outputFile by argParser.option(ArgType.String, shortName = "o", description = "Output graphviz file path").default("depgraph.dot")
 
     argParser.parse(args)
 
@@ -51,14 +63,25 @@ suspend fun main(args: Array<String>) {
         println("- $name ($version)")
     }
 
-    println("Fetching dependencies...")
-
-    for(dep in packageObj.fetchDependencies()) {
-        println("- ${dep.name} (${dep.version})")
+    val g = graph("${packageObj.name} dependencies") {
+        runBlocking {
+            graphDependencies(packageObj)
+        }
     }
 
-    /*graph("${packageObj.name} dependencies") {
+    println("Writing output to file...")
 
-    }*/
+    File(outputFile).writeText(g.toString())
+
+    println("Done")
 }
 
+suspend fun <P: IPackage<*, *>> KraphvizContext.graphDependencies(pkg: P) {
+    println("Fetching ${pkg.name} dependencies...")
+    for (dependency in pkg.fetchDependencies()) {
+        pkg.name - dependency.name
+        if(dependency.dependencies.isNotEmpty()) {
+            graphDependencies(dependency)
+        }
+    }
+}

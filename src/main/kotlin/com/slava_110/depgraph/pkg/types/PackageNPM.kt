@@ -1,15 +1,15 @@
-package com.slava_110.depgraph
+package com.slava_110.depgraph.pkg.types
 
 import com.github.yuchi.semver.Range
 import com.github.yuchi.semver.Version
-import com.slava_110.depgraph.`package`.PackageBase
+import com.slava_110.depgraph.httpClient
+import com.slava_110.depgraph.pkg.IPackage
+import com.slava_110.depgraph.pkg.PackageBase
 import com.slava_110.depgraph.serializer.NPMRangeSerializer
 import com.slava_110.depgraph.serializer.NPMVersionSerializer
 import io.ktor.client.call.*
 import io.ktor.client.request.*
-import kotlinx.coroutines.flow.*
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.Transient
 
 @Serializable
 data class PackageNPM(

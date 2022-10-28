@@ -1,4 +1,4 @@
-package com.slava_110.depgraph
+package com.slava_110.depgraph.pkg
 
 /**
  * Represents abstract package from package manager
